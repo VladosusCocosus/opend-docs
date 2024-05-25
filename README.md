@@ -205,7 +205,7 @@ req
     })
     .on('end', () => {
       const bufferData = Buffer.concat(bodyStream);
-      requestBody =  JSON.parse(bufferData);
+      requestBody =  JSON.parse(bufferData.toString());
     });
 ...
 ```
@@ -250,7 +250,7 @@ class Server {
             })
             .on('end', () => {
                 const bufferData = Buffer.concat(bodyStream);
-                requestBody =  JSON.parse(bufferData as unknown as string);
+                requestBody =  JSON.parse(bufferData.toString());
             });
 
         return { body: requestBody, searchParams: searchParams, pathname: url.pathname }
