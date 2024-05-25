@@ -37,4 +37,161 @@ JSON или медиа файлы. Серверы могут общаться д
 * Добавить абстракции для упрощения жизни
 
 
+### Node HTTP
+Встроенная библиотека позволяющая создать сервер,
+а так же взаимодействовать с другими серверами
+
+HTTP модуль не блокирует поток и может обрабатывать
+сразу несколько запросов в один момент
+
+#### Простейший сервер
+```typescript
+import * as http from "node:http";
+
+const PORT = 3000
+
+http.createServer((req, res) => {
+    console.log({url: req.url, method: req.method, headers: req.headers})
+    res.end("Hello World")
+}).listen(PORT, () => {
+    console.log(`Server started on port ${PORT}`)
+})
+
+```
+
+Первым шагом мы импортируем встроенную HTTP библиотеку, определим PORT и
+вызываем функцию ```createServer```, аргументом в нашем случае будет callback, 
+который принимает req(request), res(response)
+
+Последнее что мы должны сделать для запуска сервера - это вызвать функцию
+listen, указать порт, и вывести в callback что все прошло успешно
+
+##### Добавим пару методов и зарберемся что у нас есть в req
+
+В req нас в основом интересует url, headers, method и body
+
+###### url / headers
+
+Если мы оптравим запрос на наш сервер из примера выше, то увидем примерно такую картину в консоли
+```js
+{
+    url: '/users',
+    method: 'POST',
+    headers: {
+        'user-agent': 'PostmanRuntime/7.37.3',
+        accept: '*/*',
+        host: 'localhost:3000',
+        connection: 'keep-alive',
+        cookie: 'Cookie_1=value',
+        'content-length': '0'
+    }
+}
+```
+
+    Все заголовки в нижнем регистре потому что HTTP заголовки case-insensitive
+
+Информации уже достаточно что бы сделать простенький роутер
+
+```typescript
+import * as http from "node:http";
+
+const PORT = 3000
+
+http.createServer((req, res) => {
+    console.log({url: req.url, method: req.method})
+    if (req.method === 'POST') {
+        if (req.url === '/users') {
+            return res.end("POST USERS")
+        }
+    }
+
+    if (req.method === 'GET') {
+        if (req.url === '/users') {
+            return res.end("GET USERS")
+        }
+    }
+    
+    res.writeHead(404)
+    res.end("Not Found")
+}).listen(PORT, () => {
+    console.log(`Server started on port ${PORT}`)
+})
+```
+Мы добавили несколько условий по которым ```POST /users``` вернет ```POST USERS```, ```GET /users``` вернет ```GET USERS```
+
+Так же мы добавили fallback на случай если в нашем роутере нет такого пути
+```typescript
+res.writeHead(404)
+res.end("Not Found")
+```
+
+Вроде все работает, для проверки отправим запрос
+```bash
+curl -X POST http://localhost:3000/users
+```
+
+
+А что будет если мы добавим searchParams в наш url? Мы увидим что наш url содержит в себе searchParams
+```bash
+curl -X POST http://localhost:3000/users?q=123
+
+-> { url: '/users?q=123', method: 'POST' }
+```
+
+В node есть встроенный механизм парсинга url, который может разбить URL на несколько полезных нам частей, давайте попробуем воспользоваться ими
+
+1. Импортируем класс URL из библиотеки node:url
+2. Создаем новый instance класса URL, аргументами передаем req.url и получаем хост путем склеивания протокола и host из headers
+3. Меняем req.url на url.pathname в нашем роутере
+```typescript
+import { URL } from 'node:url'
+...
+
+http.createServer((req, res) => {
+    const url = new URL(req.url ?? '', `https://${req.headers.host}/`);
+    console.log(url)
+
+    if (req.method === 'POST') {
+        if (url.pathname === '/users') {
+    ...
+```
+
+Содержание URL instance
+```js
+-> URL {
+  href: 'https://localhost:3000/users?q=3',
+  origin: 'https://localhost:3000',
+  protocol: 'https:',
+  username: '',
+  password: '',
+  host: 'localhost:3000',
+  hostname: 'localhost',
+  port: '3000',
+  pathname: '/users',
+  search: '?q=3',
+  searchParams: URLSearchParams { 'q' => '3' },
+  hash: ''
+}
+```
+
+Cейчас у нас появилась возможность достать searchParams из URL
+
+```typescript
+...
+const url = new URL(req.url ?? '', `https://${req.headers.host}/`);
+
+const params = Object.fromEntries(url.searchParams)
+
+console.log(params)
+
+if (req.method === 'POST') {
+...
+```
+
+```js
+-> { q: '123' }
+```
+
+
+
 
