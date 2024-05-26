@@ -1,19 +1,13 @@
 import * as http from "node:http";
 import { URL } from 'node:url'
 
-interface Options {
-    port: number
-    callback: () => void
-}
-
 class Server {
-    options: Options = { port: 3000, callback: () => console.log(`Server started on localhost:${this.options.port}`)}
+    private port = 3000;
+    private readonly callback = (port: number) => console.log(`Server started on localhost:${port}`)
 
-    constructor(props: Partial<Options>) {
-        this.options = {
-            ...this.options,
-            ...props
-        }
+    constructor(port: number, callback: (port: number) => void) {
+       this.port = port
+       this.callback = callback
     }
 
     getInput(req: http.IncomingMessage) {
@@ -38,8 +32,9 @@ class Server {
 
     start() {
         http.createServer((req, res) => {
-
             const { body, searchParams, pathname } = this.getInput(req)
+
+            console.log(body, searchParams)
 
             if (req.method === 'POST') {
                 if (pathname === '/users') {
@@ -55,9 +50,9 @@ class Server {
 
             res.writeHead(404)
             res.end("Not Found")
-        }).listen(this.options.port, this.options.callback)
+        }).listen(this.port, () => this.callback(this.port))
     }
 }
 
-const server = new Server({ port: 8888 })
+const server = new Server(8888, (port) => console.log(port))
 server.start()
